@@ -1,115 +1,120 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>互動式自動駕駛控制策略分析</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Noto Sans TC', sans-serif; color: #1e293b; }
-        .chart-container { position: relative; width: 100%; max-width: 800px; margin-left: auto; margin-right: auto; height: 300px; max-height: 40vh; }
-        @media (min-width: 768px) { .chart-container { height: 400px; } }
-        .nav-link { transition: color 0.3s, border-color 0.3s; }
-        .nav-link.active { color: #0284c7; border-bottom-color: #0284c7; }
-        .stage-button { transition: background-color 0.3s, color 0.3s, transform 0.2s; }
-        .stage-button.active { background-color: #0284c7; color: white; transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
-        .quiz-option:hover { background-color: #f0f9ff; }
-        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
-    </style>
+  <meta charset="UTF-8" />
+  < name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>互動式自動駕駛控制策略分析</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      color: #1e293b;
+    }
+    /* 對舊版瀏覽器回退 */
+    .app-wrapper {
+      height: 100vh;          /* fallback */
+      height: 100dvh;         /* 動態視口高度 */
+    }
+    @supports (-webkit-touch-callout: none) {
+      .app-wrapper {
+        height: -webkit-fill-available;
+      }
+    }
+  </style>
 </head>
 <body class="antialiased">
-
-<div class="h-screen bg-slate-50 flex flex-col">
-    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm flex-shrink-0">
-        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
-             <div class="flex items-center justify-between h-16">
-                <div class="flex-shrink-0"><h1 class="text-lg sm:text-xl font-bold text-sky-600">自動駕駛控制策略分析</h1></div>
-                <div class="hidden md:block">
-                    <div class="ml-10 flex items-baseline space-x-4 flex-wrap justify-end">
-                        <a href="#overview" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:text-sky-600 border-b-2 border-transparent">總覽</a>
-                        <a href="#journey" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:text-sky-600 border-b-2 border-transparent">旅程探索</a>
-                        <a href="#tech" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:text-sky-600 border-b-2 border-transparent">核心技術</a>
-                        <a href="#perception" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:text-sky-600 border-b-2 border-transparent">感知系統</a>
-                        <a href="#audio-summary" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:text-sky-600 border-b-2 border-transparent">語音摘要</a>
-                        <a href="#quiz" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:text-sky-600 border-b-2 border-transparent">讀後測驗</a>
-                        <a href="#future" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:text-sky-600 border-b-2 border-transparent">未來展望</a>
-                    </div>
-                </div>
-                <div class="md:hidden flex items-center">
-                    <button id="mobile-menu-button" class="inline-flex items-center justify-center p-2 rounded-md text-slate-700 hover:text-sky-600 hover:bg-slate-100"><span class="sr-only">開啟主選單</span><svg id="hamburger-icon-open" class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg><svg id="hamburger-icon-close" class="h-6 w-6 hidden" stroke="currentColor" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
-                </div>
-            </div>
-            <div id="mobile-menu" class="md:hidden hidden pb-4">
-                <a href="#overview" class="mobile-nav-link block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-sky-50">總覽</a>
-                <a href="#journey" class="mobile-nav-link block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-sky-50">旅程探索</a>
-                <a href="#tech" class="mobile-nav-link block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-sky-50">核心技術</a>
-                <a href="#perception" class="mobile-nav-link block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-sky-50">感知系統</a>
-                <a href="#audio-summary" class="mobile-nav-link block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-sky-50">語音摘要</a>
-                <a href="#quiz" class="mobile-nav-link block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-sky-50">讀後測驗</a>
-                <a href="#future" class="mobile-nav-link block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-sky-50">未來展望</a>
-            </div>
-        </nav>
+  <div class="app-wrapper flex flex-col bg-slate-50">
+    
+    <!-- Header 固定高度，不受視口影響 -->
+    <header class="h-16 sticky top-0 z-50 bg-white/80 backdrop-blur-md shadow-sm flex items-center px-4 sm:px-6 lg:px-8">
+      <h1 class="text-lg sm:text-xl font-bold text-sky-600">自動駕駛控制策略分析</h1>
+      <nav class="hidden md:flex ml-auto space-x-4">
+        <a href="#overview" class="nav-link px-3 py-2 text-sm font-medium text-slate-700 hover:text-sky-600 border-b-2 border-transparent">總覽</a>
+        <a href="#journey" class="nav-link px-3 py-2 text-sm font-medium text-slate-700 hover:text-sky-600 border-b-2 border-transparent">旅程探索</a>
+        <a href="#tech" class="nav-link px-3 py-2 text-sm font-medium text-slate-700 hover:text-sky-600 border-b-2 border-transparent">核心技術</a>
+        <a href="#perception" class="nav-link px-3 py-2 text-sm font-medium text-slate-700 hover:text-sky-600 border-b-2 border-transparent">感知系統</a>
+        <a href="#audio-summary" class="nav-link px-3 py-2 text-sm font-medium text-slate-700 hover:text-sky-600 border-b-2 border-transparent">語音摘要</a>
+        <a href="#quiz" class="nav-link px-3 py-2 text-sm font-medium text-slate-700 hover:text-sky-600 border-b-2 border-transparent">讀後測驗</a>
+        <a href="#future" class="nav-link px-3 py-2 text-sm font-medium text-slate-700 hover:text-sky-600 border-b-2 border-transparent">未來展望</a>
+      </nav>
+      <button id="mobile-menu-button" class="md:hidden ml-auto p-2 text-slate-700 hover:text-sky-600 hover:bg-slate-100 rounded-md">
+        <span class="sr-only">開啟主選單</span>
+        <svg id="hamburger-icon-open" class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+        <svg id="hamburger-icon-close" class="h-6 w-6 hidden" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
     </header>
 
-    <main id="main-content" class="flex-grow overflow-y-auto scroll-smooth">
-        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-            </div>
+    <!-- 主內容區，獨立捲動 -->
+    <main id="main-content" class="flex-auto overflow-y-auto scroll-smooth container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+      <!-- 置入各 section -->
+      <section id="overview"><!-- 總覽內容 --></section>
+      <section id="journey"><!-- 旅程探索內容 --></section>
+      <section id="tech"><!-- 核心技術內容 --></section>
+      <section id="perception"><!-- 感知系統內容 --></section>
+      <section id="audio-summary"><!-- 語音摘要內容 --></section>
+      <section id="quiz"><!-- 讀後測驗內容 --></section>
+      <section id="future"><!-- 未來展望內容 --></section>
     </main>
-</div> 
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const mainContent = document.getElementById('main-content');
-    if (!mainContent) return;
-    const navLinks = document.querySelectorAll('.nav-link, .mobile-nav-link');
-    const sections = document.querySelectorAll('section');
+  </div>
 
-    navLinks.forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const targetId = this.getAttribute('href');
-            const targetElement = document.querySelector(targetId);
-            if (targetElement) {
-                const targetPosition = targetElement.offsetTop - mainContent.offsetTop;
-                mainContent.scrollTo({ top: targetPosition, behavior: 'smooth' });
-            }
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const mainContent = document.getElementById('main-content');
+      const navLinks = document.querySelectorAll('.nav-link, .mobile-nav-link');
+      const sections = document.querySelectorAll('section');
+
+      navLinks.forEach(link => {
+        link.addEventListener('click', e => {
+          e.preventDefault();
+          const target = document.querySelector(link.getAttribute('href'));
+          if (target) {
+            const offset = target.offsetTop - mainContent.offsetTop;
+            mainContent.scrollTo({ top: offset, behavior: 'smooth' });
+          }
         });
-    });
+      });
 
-    function changeNavOnScroll() {
-        let index = sections.length;
-        while(--index && (mainContent.scrollTop + 150) < sections[index].offsetTop - mainContent.offsetTop) {}
-        document.querySelectorAll('.nav-link').forEach((link) => link.classList.remove('active'));
-        const activeLink = document.querySelector(`.nav-link[href="#${sections[index].id}"]`);
-        if (activeLink) { activeLink.classList.add('active'); }
-    }
-    mainContent.addEventListener('scroll', changeNavOnScroll);
+      function updateActiveNav() {
+        let idx = sections.length;
+        while (--idx && mainContent.scrollTop + 150 < sections[idx].offsetTop - mainContent.offsetTop) {}
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`.nav-link[href="#${sections[idx].id}"]`);
+        if (active) active.classList.add('active');
+      }
+      mainContent.addEventListener('scroll', updateActiveNav);
 
-    const mobileMenuButton = document.getElementById('mobile-menu-button');
-    const mobileMenu = document.getElementById('mobile-menu');
-    const hamburgerIconOpen = document.getElementById('hamburger-icon-open');
-    const hamburgerIconClose = document.getElementById('hamburger-icon-close');
-    
-    mobileMenuButton.addEventListener('click', () => {
+      const mobileButton = document.getElementById('mobile-menu-button');
+      const mobileMenu = document.getElementById('mobile-menu');
+      const openIcon = document.getElementById('hamburger-icon-open');
+      const closeIcon = document.getElementById('hamburger-icon-close');
+
+      mobileButton.addEventListener('click', () => {
         mobileMenu.classList.toggle('hidden');
-        hamburgerIconOpen.classList.toggle('hidden');
-        hamburgerIconClose.classList.toggle('hidden');
-    });
-
-    document.querySelectorAll('.mobile-nav-link').forEach(link => {
+        openIcon.classList.toggle('hidden');
+        closeIcon.classList.toggle('hidden');
+      });
+      document.querySelectorAll('.mobile-nav-link').forEach(link => {
         link.addEventListener('click', () => {
-            mobileMenu.classList.add('hidden');
-            hamburgerIconOpen.classList.remove('hidden');
-            hamburgerIconClose.classList.add('hidden');
+          mobileMenu.classList.add('hidden');
+          openIcon.classList.remove('hidden');
+          closeIcon.classList.add('hidden');
         });
-    });
-    // ... 這裡是您所有的圖表和測驗JS邏輯，為求簡潔已省略 ...
-});
-</script>
+      });
 
+      // 圖表與測驗的 JS 邏輯請依需求補充
+    });
+  </script>
 </body>
 </html>
