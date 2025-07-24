@@ -125,8 +125,9 @@
     </section>
     </main>
 
-<script>
+ <script>
 document.addEventListener('DOMContentLoaded', () => {
+    // ==== 導覽列與捲動邏輯 ====
     const navLinks = document.querySelectorAll('.nav-link, .mobile-nav-link');
     const sections = document.querySelectorAll('section');
 
@@ -147,7 +148,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function changeNavOnScroll() {
         let index = sections.length;
         while(--index && window.scrollY + 100 < sections[index].offsetTop) {}
-        
         document.querySelectorAll('.nav-link').forEach((link) => link.classList.remove('active'));
         const activeLink = document.querySelector(`.nav-link[href="#${sections[index].id}"]`);
         if (activeLink) {
@@ -156,10 +156,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     window.addEventListener('scroll', changeNavOnScroll);
     
+    // ==== 手機版漢堡選單邏輯 ====
     const mobileMenuButton = document.getElementById('mobile-menu-button');
     const mobileMenu = document.getElementById('mobile-menu');
     const hamburgerIconOpen = document.getElementById('hamburger-icon-open');
     const hamburgerIconClose = document.getElementById('hamburger-icon-close');
+    
     mobileMenuButton.addEventListener('click', () => {
         mobileMenu.classList.toggle('hidden');
         hamburgerIconOpen.classList.toggle('hidden');
@@ -173,7 +175,115 @@ document.addEventListener('DOMContentLoaded', () => {
             hamburgerIconClose.classList.add('hidden');
         });
     });
-    // ... 此處省略圖表和測驗的JS ...
+
+    // ==== 旅程探索 & 圖表核心邏輯 (之前遺失的部分) ====
+    const journeyData = [
+        { title: "階段一：低速啟動與車道保持", challenge: "挑戰：住宅區巷弄狹窄，行人/機車多，靜態障礙物迴避。", description: "此階段首要任務是平穩起步並精確保持車道。MPC採用中等長度的預測域(N)，並對橫向位置誤差(Qy)和控制平順性(R)給予較高權重，以防止車輛突然前衝或轉向過於突兀。", params: { N: 15, Qy: 100, Qv: 80, Ra: 10, Rd: 20 } },
+        { title: "階段二：幹道巡航與彎道處理", challenge: "挑戰：車速提升，彎道多，需要與前車安全跟馳。", description: "為應對彎道，預測域(N)加長以「看得更遠」。為確保跟車平順，對速度誤差(Qv)和加速度控制(Ra)的權重被提升。此階段需要在效率與舒適性之間取得平衡。", params: { N: 30, Qy: 80, Qv: 150, Ra: 20, Rd: 40 } },
+        { title: "階段三：高密度市區交通", challenge: "挑戰：交通密度高峰，路口複雜，行人/機車行為難預測。", description: "在高度不可預測的環境中，長期預測不可靠。系統策略轉變為縮短預測域(N)，專注於短期的安全反應。控制週期縮短，以確保對突發事件的最低延遲反應，安全是唯一考量。", params: { N: 12, Qy: 200, Qv: 180, Ra: 30, Rd: 50 } },
+        { title: "階段四：歷史街區精確操控", challenge: "挑戰：道路極為狹窄，人潮眾多，需要高精度軌跡追蹤與停車。", description: "此階段對控制精度要求最高。預測域(N)縮至最短，控制目標極為單一：最小化與目標點的偏差。位置誤差(Qy)權重達到最高值，舒適性與效率讓位於絕對的精確性。", params: { N: 8, Qy: 400, Qv: 50, Ra: 15, Rd: 30 } }
+    ];
+
+    const sensorData = {
+        labels: ['攝影機(Camera)', '光達(LiDAR)', '雷達(Radar)'],
+        rain: [1, 3, 5], fog: [1, 1, 5], night: [3, 5, 5], cost: [1, 5, 3]
+    };
+    const sensorMetricLabels = { rain: '雨天性能', fog: '霧天性能', night: '夜間性能', cost: '相對成本' };
+
+    let mpcChart, sensorChart;
+
+    const stageTitleEl = document.getElementById('stage-title');
+    const stageChallengeEl = document.getElementById('stage-challenge');
+    const stageDescriptionEl = document.getElementById('stage-description');
+    const stageButtons = document.querySelectorAll('.stage-button');
+
+    function updateJourneyContent(stageIndex) {
+        // 如果頁面中沒有圖表元素，就直接返回，避免錯誤
+        if (!stageTitleEl || !mpcChart) return;
+        const data = journeyData[stageIndex];
+        stageTitleEl.textContent = data.title;
+        stageChallengeEl.textContent = data.challenge;
+        stageDescriptionEl.textContent = data.description;
+        mpcChart.data.datasets[0].data = [data.params.N, data.params.Qy, data.params.Qv, data.params.Ra, data.params.Rd];
+        mpcChart.update();
+        stageButtons.forEach((btn, index) => {
+            btn.classList.toggle('active', index == stageIndex);
+        });
+    }
+
+    function createMpcChart() {
+        const ctx = document.getElementById('mpcChart');
+        if (!ctx) return; // 如果找不到圖表畫布，就直接返回
+        mpcChart = new Chart(ctx.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: ['預測域N (步)', '橫向位置權重Qy', '速度權重Qv', '加速度權重Ra', '轉向權重Rδ'],
+                datasets: [{ label: 'MPC 參數值', data: [], backgroundColor: ['rgba(59, 130, 246, 0.7)', 'rgba(2, 132, 199, 0.7)', 'rgba(14, 165, 233, 0.7)', 'rgba(251, 146, 60, 0.7)', 'rgba(249, 115, 22, 0.7)'], borderColor: ['rgba(59, 130, 246, 1)', 'rgba(2, 132, 199, 1)', 'rgba(14, 165, 233, 1)', 'rgba(251, 146, 60, 1)', 'rgba(249, 115, 22, 1)'], borderWidth: 1 }]
+            },
+            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: '情境自適應MPC參數變化' } }, scales: { x: { beginAtZero: true } } }
+        });
+    }
+
+    function createSensorChart() {
+        const ctx = document.getElementById('sensorChart');
+        if (!ctx) return;
+        sensorChart = new Chart(ctx.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: sensorData.labels,
+                datasets: [{ label: '性能評分 (越高越好/成本越高)', data: sensorData.rain, backgroundColor: ['#93c5fd', '#60a5fa', '#3b82f6'] }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: '感測器性能比較' }, tooltip: { callbacks: { label: function(context) { let label = context.dataset.label || ''; if (label) { label += ': '; } if (context.parsed.y !== null) { const value = context.parsed.y; const metric = document.getElementById('sensor-metric-selector').value; if (metric === 'cost') { if(value <= 1) label += '低'; else if (value <= 3) label += '中'; else label += '高'; } else { if(value <= 1) label += '差'; else if (value <= 3) label += '中'; else label += '高'; } } return label; } } } },
+                scales: { y: { beginAtZero: true, max: 5, ticks: { stepSize: 1, callback: function(value, index, values) { const metric = document.getElementById('sensor-metric-selector').value; const labels = metric === 'cost' ? ['','低','','中','','高'] : ['','差','','中','','高']; return labels[value]; } } } }
+            }
+        });
+    }
+
+    function handleQuiz() {
+        const submitBtn = document.getElementById('submit-quiz-btn');
+        if (!submitBtn) return;
+        const resultsEl = document.getElementById('quiz-results');
+        const correctAnswers = { q1: 'b', q2: 'c', q3: 'c' };
+        submitBtn.addEventListener('click', () => {
+            let score = 0;
+            const userAnswers = { q1: document.querySelector('input[name="q1"]:checked'), q2: document.querySelector('input[name="q2"]:checked'), q3: document.querySelector('input[name="q3"]:checked') };
+            const totalQuestions = Object.keys(correctAnswers).length;
+            let answeredQuestions = 0;
+            for (const question in userAnswers) { if (userAnswers[question]) { answeredQuestions++; if (userAnswers[question].value === correctAnswers[question]) { score++; } } }
+            if (answeredQuestions < totalQuestions) { resultsEl.textContent = '請回答所有問題後再提交！'; resultsEl.className = 'mt-6 text-center text-lg font-semibold text-red-600'; return; }
+            let resultMessage = `您答對了 ${score} / ${totalQuestions} 題！`; let resultColor = 'text-slate-800';
+            if (score === totalQuestions) { resultMessage += " 👍 太棒了，完全正確！"; resultColor = 'text-green-600'; } else if (score >= totalQuestions / 2) { resultMessage += " 😊 還不錯喔！"; resultColor = 'text-yellow-600'; } else { resultMessage += " 😅 再加加油！"; resultColor = 'text-red-600'; }
+            resultsEl.textContent = resultMessage; resultsEl.className = `mt-6 text-center text-lg font-semibold ${resultColor}`;
+        });
+    }
+    
+    // ==== 頁面初始化執行的所有功能 ====
+    // 檢查相關的按鈕或選擇器是否存在，避免因為HTML不完整而報錯
+    if (document.querySelectorAll('.stage-button').length > 0) {
+        stageButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                updateJourneyContent(e.target.dataset.stage);
+            });
+        });
+    }
+
+    const sensorSelector = document.getElementById('sensor-metric-selector');
+    if (sensorSelector) {
+        sensorSelector.addEventListener('change', (e) => {
+            const selectedMetric = e.target.value;
+            sensorChart.data.datasets[0].data = sensorData[selectedMetric];
+            sensorChart.options.plugins.title.text = `感測器${sensorMetricLabels[selectedMetric]}比較`;
+            sensorChart.update();
+        });
+    }
+    
+    // 首次載入時，初始化所有功能
+    createMpcChart();
+    createSensorChart();
+    handleQuiz();
+    updateJourneyContent(0);
+    changeNavOnScroll();
 });
 </script>
 
