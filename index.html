@@ -1,120 +1,266 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8" />
-  < name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>互動式自動駕駛控制策略分析</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap"
-    rel="stylesheet"
-  />
-  <style>
-    body {
-      font-family: 'Noto Sans TC', sans-serif;
-      color: #1e293b;
-    }
-    /* 對舊版瀏覽器回退 */
-    .app-wrapper {
-      height: 100vh;          /* fallback */
-      height: 100dvh;         /* 動態視口高度 */
-    }
-    @supports (-webkit-touch-callout: none) {
-      .app-wrapper {
-        height: -webkit-fill-available;
-      }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>互動式自動駕駛控制策略分析</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    ="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Noto Sans TC', sans-serif; 
+            color: #1e293b; 
+        }
+        
+        /* 圖表容器樣式保持不變 */
+        .chart-container { 
+            position: relative; 
+            width: 100%; 
+            max-width: 800px; 
+            margin-left: auto; 
+            margin-right: auto; 
+            height: 300px; 
+            max-height: 40vh; 
+        }
+        
+        @media (min-width: 768px) { 
+            .chart-container { height: 400px; } 
+        }
+        
+        /* 導航和互動元素樣式保持不變 */
+        .nav-link { 
+            transition: color 0.3s, border-color 0.3s; 
+        }
+        .nav-link.active { 
+            color: #0284c7; 
+            border-bottom-color: #0284c7; 
+        }
+        .stage-button { 
+            transition: background-color 0.3s, color 0.3s, transform 0.2s; 
+        }
+        .stage-button.active { 
+            background-color: #0284c7; 
+            color: white; 
+            transform: translateY(-2px); 
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); 
+        }
+        .quiz-option:hover { 
+            background-color: #f0f9ff; 
+        }
+        
+        /* 修正視口高度問題的關鍵樣式 */
+        .app-container {
+            height: 100vh;          /* 舊瀏覽器回退 */
+            height: 100dvh;         /* 動態視口高度 - 現代瀏覽器 */
+        }
+        
+        /* iOS Safari 特殊處理 */
+        @supports (-webkit-touch-callout: none) {
+            .app-container {
+                height: -webkit-fill-available;
+            }
+        }
+        
+        /* 移除原本的全域 overflow:hidden */
+        html, body { 
+            height: 100%; 
+            margin: 0; 
+            padding: 0; 
+        }
+    </style>
 </head>
 <body class="antialiased">
-  <div class="app-wrapper flex flex-col bg-slate-50">
-    
-    <!-- Header 固定高度，不受視口影響 -->
-    <header class="h-16 sticky top-0 z-50 bg-white/80 backdrop-blur-md shadow-sm flex items-center px-4 sm:px-6 lg:px-8">
-      <h1 class="text-lg sm:text-xl font-bold text-sky-600">自動駕駛控制策略分析</h1>
-      <nav class="hidden md:flex ml-auto space-x-4">
-        <a href="#overview" class="nav-link px-3 py-2 text-sm font-medium text-slate-700 hover:text-sky-600 border-b-2 border-transparent">總覽</a>
-        <a href="#journey" class="nav-link px-3 py-2 text-sm font-medium text-slate-700 hover:text-sky-600 border-b-2 border-transparent">旅程探索</a>
-        <a href="#tech" class="nav-link px-3 py-2 text-sm font-medium text-slate-700 hover:text-sky-600 border-b-2 border-transparent">核心技術</a>
-        <a href="#perception" class="nav-link px-3 py-2 text-sm font-medium text-slate-700 hover:text-sky-600 border-b-2 border-transparent">感知系統</a>
-        <a href="#audio-summary" class="nav-link px-3 py-2 text-sm font-medium text-slate-700 hover:text-sky-600 border-b-2 border-transparent">語音摘要</a>
-        <a href="#quiz" class="nav-link px-3 py-2 text-sm font-medium text-slate-700 hover:text-sky-600 border-b-2 border-transparent">讀後測驗</a>
-        <a href="#future" class="nav-link px-3 py-2 text-sm font-medium text-slate-700 hover:text-sky-600 border-b-2 border-transparent">未來展望</a>
-      </nav>
-      <button id="mobile-menu-button" class="md:hidden ml-auto p-2 text-slate-700 hover:text-sky-600 hover:bg-slate-100 rounded-md">
-        <span class="sr-only">開啟主選單</span>
-        <svg id="hamburger-icon-open" class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-        <svg id="hamburger-icon-close" class="h-6 w-6 hidden" stroke="currentColor" fill="none" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
+
+<!-- 使用修正後的容器類別 -->
+<div class="app-container bg-slate-50 flex flex-col">
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm flex-shrink-0">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex-shrink-0">
+                    <h1 class="text-lg sm:text-xl font-bold text-sky-600">自動駕駛控制策略分析</h1>
+                </div>
+                
+                <!-- 桌面版導航 -->
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4 flex-wrap justify-end">
+                        <a href="#overview" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:text-sky-600 border-b-2 border-transparent">總覽</a>
+                        <a href="#journey" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:text-sky-600 border-b-2 border-transparent">旅程探索</a>
+                        <a href="#tech" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:text-sky-600 border-b-2 border-transparent">核心技術</a>
+                        <a href="#perception" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:text-sky-600 border-b-2 border-transparent">感知系統</a>
+                        <a href="#audio-summary" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:text-sky-600 border-b-2 border-transparent">語音摘要</a>
+                        <a href="#quiz" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:text-sky-600 border-b-2 border-transparent">讀後測驗</a>
+                        <a href="#future" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:text-sky-600 border-b-2 border-transparent">未來展望</a>
+                    </div>
+                </div>
+                
+                <!-- 行動版選單按鈕 -->
+                <div class="md:hidden flex items-center">
+                    <button id="mobile-menu-button" class="inline-flex items-center justify-center p-2 rounded-md text-slate-700 hover:text-sky-600 hover:bg-slate-100">
+                        <span class="sr-only">開啟主選單</span>
+                        <svg id="hamburger-icon-open" class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                        <svg id="hamburger-icon-close" class="h-6 w-6 hidden" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 行動版導航選單 -->
+            <div id="mobile-menu" class="md:hidden hidden pb-4">
+                <a href="#overview" class="mobile-nav-link block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-sky-50">總覽</a>
+                <a href="#journey" class="mobile-nav-link block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-sky-50">旅程探索</a>
+                <a href="#tech" class="mobile-nav-link block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-sky-50">核心技術</a>
+                <a href="#perception" class="mobile-nav-link block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-sky-50">感知系統</a>
+                <a href="#audio-summary" class="mobile-nav-link block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-sky-50">語音摘要</a>
+                <a href="#quiz" class="mobile-nav-link block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-sky-50">讀後測驗</a>
+                <a href="#future" class="mobile-nav-link block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-sky-50">未來展望</a>
+            </div>
+        </nav>
     </header>
 
-    <!-- 主內容區，獨立捲動 -->
-    <main id="main-content" class="flex-auto overflow-y-auto scroll-smooth container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-      <!-- 置入各 section -->
-      <section id="overview"><!-- 總覽內容 --></section>
-      <section id="journey"><!-- 旅程探索內容 --></section>
-      <section id="tech"><!-- 核心技術內容 --></section>
-      <section id="perception"><!-- 感知系統內容 --></section>
-      <section id="audio-summary"><!-- 語音摘要內容 --></section>
-      <section id="quiz"><!-- 讀後測驗內容 --></section>
-      <section id="future"><!-- 未來展望內容 --></section>
+    <!-- 主要內容區域 - 使用 flex-auto 而非 flex-grow，並保持可滾動 -->
+    <main id="main-content" class="flex-auto overflow-y-auto scroll-smooth">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+            
+            <!-- 總覽區塊 -->
+            <section id="overview" class="mb-16">
+                <h2 class="text-3xl font-bold text-slate-800 mb-8">自動駕駛系統總覽</h2>
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <p class="text-lg text-slate-600 leading-relaxed">
+                        自動駕駛技術代表了交通運輸領域的革命性突破，結合了人工智慧、機器學習、感知系統和精密控制技術...
+                    </p>
+                </div>
+            </section>
+
+            <!-- 旅程探索區塊 -->
+            <section id="journey" class="mb-16">
+                <h2 class="text-3xl font-bold text-slate-800 mb-8">自動駕駛發展旅程</h2>
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <p class="text-lg text-slate-600 leading-relaxed">
+                        從早期的駕駛輔助系統到現在的完全自動駕駛，這項技術經歷了數十年的發展歷程...
+                    </p>
+                </div>
+            </section>
+
+            <!-- 核心技術區塊 -->
+            <section id="tech" class="mb-16">
+                <h2 class="text-3xl font-bold text-slate-800 mb-8">核心技術架構</h2>
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <p class="text-lg text-slate-600 leading-relaxed">
+                        自動駕駛系統的核心技術包括感知、決策、控制三大模組...
+                    </p>
+                </div>
+            </section>
+
+            <!-- 感知系統區塊 -->
+            <section id="perception" class="mb-16">
+                <h2 class="text-3xl font-bold text-slate-800 mb-8">感知系統分析</h2>
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <p class="text-lg text-slate-600 leading-relaxed">
+                        感知系統是自動駕駛車輛的"眼睛"，負責理解周圍環境...
+                    </p>
+                </div>
+            </section>
+
+            <!-- 語音摘要區塊 -->
+            <section id="audio-summary" class="mb-16">
+                <h2 class="text-3xl font-bold text-slate-800 mb-8">語音摘要</h2>
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <p class="text-lg text-slate-600 leading-relaxed">
+                        透過語音技術，讓使用者能以聽覺方式快速了解自動駕駛的關鍵概念...
+                    </p>
+                </div>
+            </section>
+
+            <!-- 讀後測驗區塊 -->
+            <section id="quiz" class="mb-16">
+                <h2 class="text-3xl font-bold text-slate-800 mb-8">讀後測驗</h2>
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <p class="text-lg text-slate-600 leading-relaxed">
+                        透過互動式測驗，驗證您對自動駕駛技術的理解程度...
+                    </p>
+                </div>
+            </section>
+
+            <!-- 未來展望區塊 -->
+            <section id="future" class="mb-16">
+                <h2 class="text-3xl font-bold text-slate-800 mb-8">未來展望</h2>
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <p class="text-lg text-slate-600 leading-relaxed">
+                        展望未來，自動駕駛技術將如何改變我們的交通方式和城市規劃...
+                    </p>
+                </div>
+            </section>
+
+        </div>
     </main>
+</div>
 
-  </div>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const mainContent = document.getElementById('main-content');
+    if (!mainContent) return;
+    
+    const navLinks = document.querySelectorAll('.nav-link, .mobile-nav-link');
+    const sections = document.querySelectorAll('section');
 
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const mainContent = document.getElementById('main-content');
-      const navLinks = document.querySelectorAll('.nav-link, .mobile-nav-link');
-      const sections = document.querySelectorAll('section');
-
-      navLinks.forEach(link => {
-        link.addEventListener('click', e => {
-          e.preventDefault();
-          const target = document.querySelector(link.getAttribute('href'));
-          if (target) {
-            const offset = target.offsetTop - mainContent.offsetTop;
-            mainContent.scrollTo({ top: offset, behavior: 'smooth' });
-          }
+    // 平滑滾動導航
+    navLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const targetId = this.getAttribute('href');
+            const targetElement = document.querySelector(targetId);
+            if (targetElement) {
+                const targetPosition = targetElement.offsetTop - mainContent.offsetTop;
+                mainContent.scrollTo({ top: targetPosition, behavior: 'smooth' });
+            }
         });
-      });
-
-      function updateActiveNav() {
-        let idx = sections.length;
-        while (--idx && mainContent.scrollTop + 150 < sections[idx].offsetTop - mainContent.offsetTop) {}
-        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-        const active = document.querySelector(`.nav-link[href="#${sections[idx].id}"]`);
-        if (active) active.classList.add('active');
-      }
-      mainContent.addEventListener('scroll', updateActiveNav);
-
-      const mobileButton = document.getElementById('mobile-menu-button');
-      const mobileMenu = document.getElementById('mobile-menu');
-      const openIcon = document.getElementById('hamburger-icon-open');
-      const closeIcon = document.getElementById('hamburger-icon-close');
-
-      mobileButton.addEventListener('click', () => {
-        mobileMenu.classList.toggle('hidden');
-        openIcon.classList.toggle('hidden');
-        closeIcon.classList.toggle('hidden');
-      });
-      document.querySelectorAll('.mobile-nav-link').forEach(link => {
-        link.addEventListener('click', () => {
-          mobileMenu.classList.add('hidden');
-          openIcon.classList.remove('hidden');
-          closeIcon.classList.add('hidden');
-        });
-      });
-
-      // 圖表與測驗的 JS 邏輯請依需求補充
     });
-  </script>
+
+    // 滾動時更新導航狀態
+    function changeNavOnScroll() {
+        let index = sections.length;
+        while(--index && (mainContent.scrollTop + 150) < sections[index].offsetTop - mainContent.offsetTop) {}
+        document.querySelectorAll('.nav-link').forEach((link) => link.classList.remove('active'));
+        const activeLink = document.querySelector(`.nav-link[href="#${sections[index].id}"]`);
+        if (activeLink) { activeLink.classList.add('active'); }
+    }
+    mainContent.addEventListener('scroll', changeNavOnScroll);
+
+    // 行動版選單控制
+    const mobileMenuButton = document.getElementById('mobile-menu-button');
+    const mobileMenu = document.getElementById('mobile-menu');
+    const hamburgerIconOpen = document.getElementById('hamburger-icon-open');
+    const hamburgerIconClose = document.getElementById('hamburger-icon-close');
+    
+    if (mobileMenuButton && mobileMenu) {
+        mobileMenuButton.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+            hamburgerIconOpen.classList.toggle('hidden');
+            hamburgerIconClose.classList.toggle('hidden');
+        });
+
+        document.querySelectorAll('.mobile-nav-link').forEach(link => {
+            link.addEventListener('click', () => {
+                mobileMenu.classList.add('hidden');
+                hamburgerIconOpen.classList.remove('hidden');
+                hamburgerIconClose.classList.add('hidden');
+            });
+        });
+    }
+
+    // 初始化時設定第一個導航項目為活躍狀態
+    changeNavOnScroll();
+    
+    // 這裡可以加入您的圖表和測驗 JavaScript 邏輯
+    console.log('自動駕駛控制策略分析系統已載入完成');
+});
+</script>
+
 </body>
 </html>
